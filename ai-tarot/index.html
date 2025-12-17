@@ -2,17 +2,164 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 神秘塔罗馆</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        /* 简单写点样式，让它看起来像那么回事 */
-        body { background: #1a1a2a; color: #e0e0e0; font-family: sans-serif; display: flex; justify-content: center; min-height: 100vh; align-items: center; }
-        .card-room { background: #2a2a3a; padding: 2rem; border-radius: 15px; box-shadow: 0 0 20px rgba(138, 43, 226, 0.3); width: 400px; text-align: center; }
-        input { width: 80%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #444; background: #333; color: white; }
-        button { background: linear-gradient(45deg, #8a2be2, #4b0082); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: transform 0.2s;}
-        button:hover { transform: scale(1.05); }
-        button:disabled { background: #555; cursor: not-allowed; }
-        .result-box { margin-top: 20px; text-align: left; background: #222; padding: 15px; border-radius: 8px; border-left: 4px solid #8a2be2; line-height: 1.6; }
+        /* --- 基础布局 --- */
+        body {
+            background: radial-gradient(circle at center, #1a0b2e 0%, #000000 100%);
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            align-items: center;
+            margin: 0;
+        }
+
+        .main-container {
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            padding-bottom: 50px;
+        }
+
+        h2 {
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            color: #d8bfd8;
+            text-shadow: 0 0 10px rgba(216, 191, 216, 0.5);
+        }
+
+        /* --- 输入框与按钮 --- */
+        .input-group {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.5s ease;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            box-sizing: border-box; /* 修复宽度溢出 */
+            font-size: 16px;
+            outline: none;
+        }
+
+        input:focus { border-color: #8a2be2; }
+
+        .magic-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .magic-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(118, 75, 162, 0.6); }
+        .magic-btn:disabled { background: #555; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* --- 3D 卡牌核心样式 (抄这里！) --- */
+        .scene {
+            width: 200px;
+            height: 340px;
+            margin: 0 auto 30px;
+            perspective: 1000px; /* 3D透视 */
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 1s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+
+        .card.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden; /* 背面不可见 */
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 牌背：用CSS画一个神秘图案 */
+        .card-back {
+            background: #1a1a1a;
+            background-image: radial-gradient(#2a2a2a 15%, transparent 16%), radial-gradient(#2a2a2a 15%, transparent 16%);
+            background-size: 20px 20px;
+            border: 2px solid #4b0082;
+        }
+        .card-back::after {
+            content: '🔮';
+            font-size: 50px;
+            filter: drop-shadow(0 0 10px #8a2be2);
+            animation: pulse 2s infinite;
+        }
+
+        /* 牌面：结果页 */
+        .card-front {
+            background: linear-gradient(to bottom right, #fdfbfb, #ebedee);
+            color: #333;
+            transform: rotateY(180deg); /* 初始状态是反着的 */
+            border: 5px solid #d4af37; /* 金边 */
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1a0b2e;
+            margin-top: 10px;
+        }
+
+        .card-image-placeholder {
+            font-size: 80px;
+            margin: 20px 0;
+        }
+
+        /* --- 解读结果区域 --- */
+        .result-area {
+            text-align: left;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 10px;
+            border-top: 2px solid #8a2be2;
+            animation: fadeIn 1s ease-in;
+        }
+
+        /* --- 动画关键帧 --- */
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
         .fade-enter-from, .fade-leave-to { opacity: 0; }
     </style>
@@ -20,23 +167,43 @@
 <body>
 
 <div id="app">
-    <div class="card-room">
+    <div class="main-container">
         <h2>🔮 AI 塔罗指引</h2>
 
-        <div v-if="!result">
-            <p>心中默念你的问题</p>
-            <input v-model="question" placeholder="例如：我应该辞职去日本吗？">
-            <br>
-            <button @click="startDivination" :disabled="loading || !question">
-                {{ loading ? '正在感应牌意...' : '抽取牌面并解读' }}
-            </button>
-        </div>
+        <transition name="fade" mode="out-in">
+            <div v-if="step === 'input'" class="input-group" key="input">
+                <input v-model="question" placeholder="默念你的问题，例如：我近期财运如何？" @keyup.enter="startDivination">
+                <button class="magic-btn" @click="startDivination" :disabled="!question">
+                    开始感应
+                </button>
+            </div>
 
-        <div v-else class="result-box">
-            <h3 style="color: #d8bfd8">🎴 抽到的牌：{{ pickedCard }}</h3>
-            <p>{{ result }}</p>
-            <button @click="reset" style="margin-top:15px; background: #444; font-size: 0.8em">再测一次</button>
-        </div>
+            <div v-else key="reading">
+                <div class="scene">
+                    <div class="card" :class="{ 'is-flipped': isFlipped }">
+                        <div class="card-face card-back"></div>
+                        <div class="card-face card-front">
+                            <div class="card-image-placeholder">🎴</div>
+                            <div class="card-title">{{ pickedCard }}</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 5px">正位</div>
+                        </div>
+                    </div>
+                </div>
+
+                <p v-if="loading" style="color: #bbb; font-style: italic; animation: pulse 1.5s infinite">
+                    正在连接宇宙能量...
+                </p>
+
+                <div v-if="result" class="result-area">
+                    <p style="line-height: 1.8; font-size: 15px;">{{ result }}</p>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="magic-btn" @click="reset" style="padding: 8px 20px; font-size: 14px; background: #444;">
+                            再测一次
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
     </div>
 </div>
 
@@ -45,23 +212,28 @@
 
     createApp({
         setup() {
+            const step = ref('input'); // input | reading
             const question = ref('');
             const result = ref('');
             const loading = ref(false);
             const pickedCard = ref('');
+            const isFlipped = ref(false);
 
-            // 简单的牌库
             const tarotCards = ['愚人', '魔术师', '女祭司', '女皇', '皇帝', '教皇', '恋人', '战车', '隐士', '命运之轮', '正义', '倒吊人', '死神', '节制', '恶魔', '塔', '星星', '月亮', '太阳', '审判', '世界'];
 
             const startDivination = async () => {
                 if (!question.value) return;
-                loading.value = true;
 
-                // 1. 前端模拟抽牌
+                // 1. 切换界面状态
+                step.value = 'reading';
+                loading.value = true;
+                isFlipped.value = false; // 确保是牌背朝上
+
+                // 2. 选牌
                 pickedCard.value = tarotCards[Math.floor(Math.random() * tarotCards.length)];
 
-                // 2. 请求后端
                 try {
+                    // 3. 请求API
                     const res = await fetch('/api/index', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -71,23 +243,31 @@
                         })
                     });
                     const data = await res.json();
+
                     if(data.success) {
                         result.value = data.data;
+
+                        // 4. 关键：延迟一点再翻牌，增加仪式感
+                        setTimeout(() => {
+                            loading.value = false;
+                            isFlipped.value = true; // 翻牌！
+                        }, 500);
                     }
                 } catch (e) {
-                    alert('网络连接失败');
-                } finally {
-                    loading.value = false;
+                    alert('网络连接失败，请稍后再试');
+                    step.value = 'input'; // 回退
                 }
             };
 
             const reset = () => {
+                step.value = 'input';
                 result.value = '';
                 question.value = '';
                 pickedCard.value = '';
+                isFlipped.value = false;
             }
 
-            return { question, result, loading, pickedCard, startDivination, reset };
+            return { step, question, result, loading, pickedCard, isFlipped, startDivination, reset };
         }
     }).mount('#app');
 </script>
