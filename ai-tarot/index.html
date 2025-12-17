@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 神秘塔罗馆</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        /* 简单写点样式，让它看起来像那么回事 */
+        body { background: #1a1a2a; color: #e0e0e0; font-family: sans-serif; display: flex; justify-content: center; min-height: 100vh; align-items: center; }
+        .card-room { background: #2a2a3a; padding: 2rem; border-radius: 15px; box-shadow: 0 0 20px rgba(138, 43, 226, 0.3); width: 400px; text-align: center; }
+        input { width: 80%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #444; background: #333; color: white; }
+        button { background: linear-gradient(45deg, #8a2be2, #4b0082); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: transform 0.2s;}
+        button:hover { transform: scale(1.05); }
+        button:disabled { background: #555; cursor: not-allowed; }
+        .result-box { margin-top: 20px; text-align: left; background: #222; padding: 15px; border-radius: 8px; border-left: 4px solid #8a2be2; line-height: 1.6; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div class="card-room">
+        <h2>🔮 AI 塔罗指引</h2>
+
+        <div v-if="!result">
+            <p>心中默念你的问题</p>
+            <input v-model="question" placeholder="例如：我应该辞职去日本吗？">
+            <br>
+            <button @click="startDivination" :disabled="loading || !question">
+                {{ loading ? '正在感应牌意...' : '抽取牌面并解读' }}
+            </button>
+        </div>
+
+        <div v-else class="result-box">
+            <h3 style="color: #d8bfd8">🎴 抽到的牌：{{ pickedCard }}</h3>
+            <p>{{ result }}</p>
+            <button @click="reset" style="margin-top:15px; background: #444; font-size: 0.8em">再测一次</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref } = Vue;
+
+    createApp({
+        setup() {
+            const question = ref('');
+            const result = ref('');
+            const loading = ref(false);
+            const pickedCard = ref('');
+
+            // 简单的牌库
+            const tarotCards = ['愚人', '魔术师', '女祭司', '女皇', '皇帝', '教皇', '恋人', '战车', '隐士', '命运之轮', '正义', '倒吊人', '死神', '节制', '恶魔', '塔', '星星', '月亮', '太阳', '审判', '世界'];
+
+            const startDivination = async () => {
+                if (!question.value) return;
+                loading.value = true;
+
+                // 1. 前端模拟抽牌
+                pickedCard.value = tarotCards[Math.floor(Math.random() * tarotCards.length)];
+
+                // 2. 请求后端
+                try {
+                    const res = await fetch('/api/divine', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            question: question.value,
+                            card: pickedCard.value
+                        })
+                    });
+                    const data = await res.json();
+                    if(data.success) {
+                        result.value = data.data;
+                    }
+                } catch (e) {
+                    alert('网络连接失败');
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            const reset = () => {
+                result.value = '';
+                question.value = '';
+                pickedCard.value = '';
+            }
+
+            return { question, result, loading, pickedCard, startDivination, reset };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
